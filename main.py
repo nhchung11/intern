@@ -1,7 +1,7 @@
 import my_lib
 import numpy as np
 import cv2
-
+import matplotlib.pyplot as plt
 # Lấy ma trận từ file bin và tham số
 bin_path = r'D:\python\wavelet_intern\data\bin1.bin'
 param_path = r'D:\python\wavelet_intern\data\param1.txt'
@@ -72,10 +72,13 @@ for i in range (depth_height):
 # cv2.imshow('window', gray)
 # cv2.waitKey(0)
 depth_data = my_lib.get_backbone(depth_data)
-my_lib.o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
+backbone_line = my_lib.get_backbone_line(depth_data)
+tail_val, tail_index = my_lib.get_tail(backbone_line)
 
-
-
-
-
-
+plt.scatter(tail_index, tail_val, c='r', marker='o')
+plt.plot(backbone_line)
+plt.xlabel('Cột')
+plt.ylabel('Độ cao')
+plt.title('Xương sống')
+plt.show()
+# my_lib.o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)

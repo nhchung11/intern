@@ -210,8 +210,27 @@ def get_backbone(depth_data):
         if len(nonzero_elements) > 0:
             min_nonzero_element = np.min(nonzero_elements)  
             depth_data[column != min_nonzero_element, col_index] = 0
-    return depth_data  
+    return depth_data
+    # return mảng 2 chiều
 
 def get_backbone_line(depth_data):
-    depth_data = get_backbone(depth_data)
-    return depth_data
+    backbone_line = np.zeros(depth_data.shape[1])
+    for col_index in range(depth_data.shape[1]):
+        column = depth_data[:, col_index]
+        non_zero_elements = column[column != 0]
+        if non_zero_elements.size > 0:
+            backbone_line[col_index] = np.mean(non_zero_elements)
+    backbone_line = backbone_line[backbone_line != 0]
+    max_val = np.max(backbone_line)
+    backbone_line = max_val - backbone_line
+    return backbone_line
+    # return mảng 1 chiều
+
+def get_tail(backbone_line):
+    length = len(backbone_line)
+    min_val = np.min(backbone_line)
+    min_index = np.argmin(backbone_line)
+    if min_index < length - 50:
+        return min_val, min_index
+        # return vị trí cột và độ cao của cuống đuôi
+
