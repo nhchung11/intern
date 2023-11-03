@@ -3,8 +3,8 @@ import numpy as np
 import cv2
 
 # Lấy ma trận từ file bin và tham số
-bin_path = r'D:\python\wavelet_intern\data\new.bin'
-param_path = r'D:\python\wavelet_intern\data\213622251778.txt'
+bin_path = r'D:\python\wavelet_intern\data\bin1.bin'
+param_path = r'D:\python\wavelet_intern\data\param1.txt'
 
 name, depth_scale, depth_width, depth_height, depth_cx, depth_cy, depth_fx, depth_fy = my_lib.get_parameter(param_path)
 depth_data = my_lib.convert(bin_path, depth_width, depth_height)
@@ -43,8 +43,8 @@ for i in range(depth_height):
     for j in range(depth_width):
         if depth_data[i, j] != 0 and bars[i, j] != 0:
             depth_data[i, j] = 0
-        # if depth_data[i, j] < 800:
-        #     depth_data[i, j] = 0
+        if depth_data[i, j] < 800:
+            depth_data[i, j] = 0
 
 # Vector vuông góc với đường thẳng nối 2 điểm trung bình của 2 thanh
 direction_vector = np.array([secondbar_avr[1] - firstbar_avr[1], firstbar_avr[0] - secondbar_avr[0], 0])
@@ -64,6 +64,14 @@ pts = np.array([[point1[0], point1[1]], [point2[0], point2[1]], [point4[0], poin
 cv2.fillPoly(matrix, [pts], 1)
 depth_data = depth_data * matrix
 
+body = my_lib.get_largest_area(depth_data)
+for i in range (depth_height):
+    for j in range(depth_width):
+        if body[i, j] == 0:
+            depth_data[i, j] = 0
+# cv2.imshow('window', gray)
+# cv2.waitKey(0)
+depth_data = my_lib.get_backbone(depth_data)
 my_lib.o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
 
 

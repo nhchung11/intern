@@ -81,10 +81,10 @@ def o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, 
 
 
 # Lấy ảnh xám từ ma trận depth
-def get_16bit_image(depth_data):
+def get_8bit_image(depth_data):
     min_val = np.min(depth_data)
     max_val = np.max(depth_data)
-    gray_image = ((depth_data - min_val) / (max_val - min_val) * 65535).astype(np.uint16)
+    gray_image = ((depth_data - min_val) / (max_val - min_val) * 255).astype(np.uint8)
     return gray_image
 
 # Lấy thanh ngang đầu tiên
@@ -188,3 +188,30 @@ def angular_deviation(firstbar_avr, secondbar_avr):
     return tan_alpha, tan_beta      
     # alpha: Góc lệch giữa 2 điểm trung bình và mặt phẳng xOy
     # beta: Góc lệch giữa 2 điểm trung bình và mặt phảng xOz
+
+
+
+def get_largest_area(depth_data):
+    depth_data = get_8bit_image(depth_data)
+    depth_data = cv2.GaussianBlur(depth_data, (7,7), 0)
+    _, thresholded_image = cv2.threshold(depth_data, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    contours, _ = cv2.findContours(thresholded_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    mask = np.zeros_like(thresholded_image)
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        cv2.drawContours(mask, [largest_contour], -1, 255, thickness=cv2.FILLED)
+    result_image = cv2.bitwise_and(thresholded_image, thresholded_image, mask=mask)
+    return result_image
+
+def get_backbone(depth_data):
+    for col_index in range(depth_data.shape[1]):
+        column = depth_data[:, col_index]
+        nonzero_elements = column[column > 0]  
+        if len(nonzero_elements) > 0:
+            min_nonzero_element = np.min(nonzero_elements)  
+            depth_data[column != min_nonzero_element, col_index] = 0
+    return depth_data  
+
+def get_backbone_line(depth_data):
+    depth_data = get_backbone(depth_data)
+    return depth_data
