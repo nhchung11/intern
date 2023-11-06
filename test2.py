@@ -26,13 +26,15 @@ for i in range(depth_height):
     for j in range(depth_width):
         if img[i, j] == 0:
             first_bar[i, j] = 0
+# cv2.imshow('asnd', img)
+# cv2.waitKey(0)  
 for i in range(depth_height):
     for j in range(depth_width):
         if first_bar[depth_height - i - 1, j] != 0:
             bottom_left[0] = j
             bottom_left[1] = depth_height - i - 1
             bottom_left[2] = first_bar[depth_height - i - 1, j]
-
+            break
 
 upper_left = np.array([0, 0, 0])
 for i in range(depth_height):
@@ -41,6 +43,7 @@ for i in range(depth_height):
             upper_left[0] = j
             upper_left[1] = i 
             upper_left[2] = first_bar[i, j]
+
 
 # x = np.arange(0, depth_width)
 # y = np.arange(0, depth_height)
@@ -53,6 +56,50 @@ for i in range(depth_height):
 # plt.show()
 # my_lib.o3d_visualize(first_bar, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
 
+upper_right = np.array([0, 0, 0])
+bottom_right = np.array([0, 0, 0])
+
+for i in range (depth_height):
+    for j in range (depth_width):
+        if depth_data[i, j] > 760:
+            depth_data[i, j] = 0
+        if depth_data[i, j] == first_bar[i, j]:
+            depth_data[i, j] = 0
+        if j > int(depth_width / 2):
+            if depth_data[i, j] < upper_left[2] + 0.15 * i:
+                depth_data[i, j] = 0
+img = my_lib.get_largest_area(depth_data)
+bar2 = depth_data.copy()
+for i in range(depth_height):
+    for j in range(depth_width):
+        if img[i, j] == 0:
+            bar2[i, j] = 0
 # cv2.imshow('window', img)
 # cv2.waitKey(0)
+for i in range(depth_height):
+    for j in range(depth_width):
+        if bar2[depth_height - i - 1, j] != 0:
+            bottom_right[0] = j
+            bottom_right[1] = depth_height - i - 1
+            bottom_right[2] = bar2[depth_height - i - 1, j]
+            break
 
+for i in range(depth_height):
+    for j in range(depth_width):
+        if bar2[i, j] != 0:
+            upper_right[0] = j
+            upper_right[1] = i 
+            upper_right[2] = bar2[i, j]
+
+img = my_lib.get_8bit_image(bar2)
+# cv2.imshow('window', img)
+# cv2.waitKey(0)
+x = np.arange(0, depth_width)
+y = np.arange(0, depth_height)
+x, y = np.meshgrid(x, y)
+fig = plt.figure()
+ax = fig.add_subplot(111, projection = '3d')
+ax.scatter(upper_right[0], upper_right[1], upper_right[2], c='red', marker='o')
+ax.scatter(bottom_right[0], bottom_right[1], bottom_right[2], c='red', marker='o')
+ax.plot_surface(x, y, bar2)
+plt.show()
