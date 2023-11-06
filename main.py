@@ -18,9 +18,12 @@ bars = firstbar + secondbar
 # my_lib.plt_bars_visualize(bars, depth_width, depth_height, firstbar_avr, secondbar_avr)
 
 tan_alpha, tan_beta = my_lib.angular_deviation(firstbar_avr, secondbar_avr)
-
+print(firstbar_avr, type(firstbar_avr))
+print(secondbar_avr, secondbar_avr.dtype)
+print(tan_alpha, tan_beta)
 # Chuẩn hóa ảnh cho 2 thanh ngang bằng nhau
 # Lấy thanh cao hơn làm gốc
+# print(depth_data.dtype)
 for i in range(depth_width):
     a = abs(secondbar_avr[0] - i)
     d = np.int32(a * tan_alpha)
