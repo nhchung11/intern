@@ -11,16 +11,14 @@ depth_data = my_lib.convert(bin_path, depth_width, depth_height)
 
 
 # Lấy thanh ngang thứ nhất và thứ hai
-firstbar, firstbar_avr = my_lib.get_first_bar(depth_data)
+firstbar, firstbar_avr,_, _ = my_lib.get_first_bar(depth_data, depth_height, depth_width)
 secondbar, secondbar_avr = my_lib.get_second_bar(depth_data)
 bars = firstbar + secondbar
 
 # my_lib.plt_bars_visualize(bars, depth_width, depth_height, firstbar_avr, secondbar_avr)
 
 tan_alpha, tan_beta = my_lib.angular_deviation(firstbar_avr, secondbar_avr)
-print(firstbar_avr, type(firstbar_avr))
-print(secondbar_avr, secondbar_avr.dtype)
-print(tan_alpha, tan_beta)
+
 # Chuẩn hóa ảnh cho 2 thanh ngang bằng nhau
 # Lấy thanh cao hơn làm gốc
 # print(depth_data.dtype)
@@ -62,7 +60,7 @@ point4 = (secondbar_avr - (200 / np.linalg.norm(direction_vector)) * direction_v
 # my_lib.plt_bars_visualize(bars, depth_width, depth_height, firstbar_avr, secondbar_avr)
 # my_lib.o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
 # print(point1, point2, point3, point4)
-matrix = np.zeros((480, 848), dtype=int)
+matrix = np.zeros((depth_height, depth_width), dtype=int)
 pts = np.array([[point1[0], point1[1]], [point2[0], point2[1]], [point4[0], point4[1]], [point3[0], point3[1]]], dtype=np.int32)
 cv2.fillPoly(matrix, [pts], 1)
 depth_data = depth_data * matrix

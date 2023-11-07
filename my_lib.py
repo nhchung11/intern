@@ -88,29 +88,34 @@ def get_8bit_image(depth_data):
     return gray_image
 
 # Lấy thanh ngang đầu tiên
-def get_first_bar(depth_data):
+def get_first_bar(depth_data, depth_height, depth_width):
+    upper_left = np.array([0, 0, 0])
+    bottom_left = np.array([0, 0, 0])
     first_bar = np.zeros_like(depth_data)
-    x_sum = 0
-    count = 0
-    z_sum = 0
-    y_sum = 0
-
-    for i in range (480):
-        for j in range (400):
-            if (depth_data[i, j] <  520) and (depth_data[i, j] != 0):
+    for i in range(depth_height):
+        for j in range(int(depth_width / 2)):
+            if depth_data[i, j] < 520 and depth_data[i, j] != 0:
                 first_bar[i, j] = depth_data[i, j]
-                x_sum += j
-                y_sum += i
-                z_sum += depth_data[i, j]
-                count += 1       
 
-    x_avr = int(x_sum / count)
-    z_avr = int(z_sum / count)
-    y_avr = int(y_sum / count)
-    firstbar_avr = np.array([x_avr, y_avr, z_avr])
-
-    return first_bar, firstbar_avr  
-    # Các phần tử trong thanh ngang đầu tiên, phần tử trung bình ở giữa
+    img = get_8bit_image(first_bar)
+    # img = get_largest_area(first_bar)
+    for i in range(depth_height):
+        for j in range(depth_width):
+            if img[i, j] == 0:
+                first_bar[i, j] = 0
+            if first_bar[depth_height - i - 1, j] != 0:
+                upper_left[0] = j
+                upper_left[1] = depth_height - i - 1
+                upper_left[2] = first_bar[depth_height - i - 1, j]
+                
+            if first_bar[i, j] != 0:
+                bottom_left[0] = j
+                bottom_left[1] = i 
+                bottom_left[2] = first_bar[i, j]
+    if upper_left[1] - bottom_left[1] < 150:
+        bottom_left[1] = depth_height
+    left_avr = ((upper_left + bottom_left) / 2).astype(np.int32)
+    return first_bar, left_avr, upper_left, bottom_left
 
 # Lấy thanh ngang thứ hai
 def get_second_bar(depth_data):
@@ -228,7 +233,7 @@ def get_backbone_line(depth_data):
 
 def get_tail(backbone_line):
     length = len(backbone_line)
-    min_val = np.min(backbone_line)
+    min_val = np.min(backbone_line[backbone_line != 0])
     min_index = np.argmin(backbone_line)
     if min_index < length - 50:
         return min_val, min_index
