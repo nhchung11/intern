@@ -97,12 +97,10 @@ def get_first_bar(depth_data, depth_height, depth_width):
             if depth_data[i, j] < 520 and depth_data[i, j] != 0:
                 first_bar[i, j] = depth_data[i, j]
 
-    img = get_8bit_image(first_bar)
-    # img = get_largest_area(first_bar)
+    first_bar = get_largest_area(first_bar)
+    
     for i in range(depth_height):
         for j in range(depth_width):
-            if img[i, j] == 0:
-                first_bar[i, j] = 0
             if first_bar[depth_height - i - 1, j] != 0:
                 upper_left[0] = j
                 upper_left[1] = depth_height - i - 1
@@ -112,70 +110,63 @@ def get_first_bar(depth_data, depth_height, depth_width):
                 bottom_left[0] = j
                 bottom_left[1] = i 
                 bottom_left[2] = first_bar[i, j]
-    if upper_left[1] - bottom_left[1] < 150:
+    if bottom_left[1] - upper_left[1] < 150:
+        upper_left[1] = bottom_left[1]
         bottom_left[1] = depth_height
     left_avr = ((upper_left + bottom_left) / 2).astype(np.int32)
     return first_bar, left_avr, upper_left, bottom_left
 
 # Lấy thanh ngang thứ hai
-def get_second_bar(depth_data):
-    second_bar = np.zeros_like(depth_data)
-    x_sum = 0
-    count = 0
-    z_sum = 0
-    y_sum = 0
+def get_second_bar(depth_data, depth_height, depth_width, leftbar_avr, leftbar):
+    for i in range(depth_height):
+        for j in range(depth_width):
+            if depth_data[i, j] > leftbar_avr[2] + 0.3 * j:
+                depth_data[i, j] = 0
+     
+    depth_data = depth_data - leftbar
+    depth_data = get_largest_area(depth_data)  
+    img = depth_data.copy()
+    img[img != 0] = 255
+    row = img[leftbar_avr[1],:]
+    rightbar_avr = np.array([0, 0, 0])
+    upper_right = np.array([0, 0])
+    bottom_right = np.array([0, 0])
+    for i in range(depth_width):
+        if row[i] == 255:
+            rightbar_avr[0] = i + 20
+            rightbar_avr[1] = leftbar_avr[1]
+            col = img[:, rightbar_avr[0]]
+            for j in range(depth_height):
+                if col[j] == 255:
+                    upper_right[0] = rightbar_avr[0]
+                    upper_right[1] = j
+                    break
+            for j in range(depth_height):
+                if col[depth_height - j - 1] == 255:
+                    bottom_right[0] = rightbar_avr[0]
+                    bottom_right[1] = depth_height - j - 1
+                    break
+            break
+    rightbar_avr[2] = depth_data[rightbar_avr[1], rightbar_avr[0]]
+    return rightbar_avr, upper_right, bottom_right
 
-    for i in range (480):
-        for j in range (400, 848):
-            if (depth_data[i, j] <  655) and (depth_data[i, j] > 645):
-                second_bar[i, j] = depth_data[i, j]
-                x_sum += j
-                y_sum += i
-                z_sum += depth_data[i, j]
-                count += 1
 
-    x_avr = int(x_sum / count)
-    z_avr = int(z_sum / count)
-    y_avr = int(y_sum / count)
-    secondbar_avr = np.array([x_avr, y_avr, z_avr])
+# Chỉnh 4 góc cho khớp với thân
+def get_4_corner_of_body(upper_left, bottom_left, upper_right, bottom_right, depth_height, depth_width):    
+    if upper_left[1] < upper_right[1]:
+        upper_left[1] = upper_right[1]
+    else:
+        upper_right[1] = upper_left[1]
 
-    return second_bar, secondbar_avr    
-    # Các phần tử trong thanh ngang thứ 2 và phần tử trung bình ở giữa
+    if upper_right[0] - upper_left[0] < depth_height / 2:
+        upper_left = upper_right
+        bottom_left = bottom_right
+        upper_right = np.array([depth_width - 5, upper_right[1]])
+        bottom_right = np.array([depth_width - 5, bottom_right[1]])
 
-# Hiển thị 2 thanh ngang 
-def plt_bars_visualize(bars, depth_width, depth_height, firstbar_avr, secondbar_avr):
-    x1 = firstbar_avr[0]
-    y1 = firstbar_avr[1]
-    z1 = firstbar_avr[2]
 
-    x2 = secondbar_avr[0]
-    y2 = secondbar_avr[1]
-    z2 = secondbar_avr[2]
-
-    direction_vector = np.array([y2- y1, x1- x2, 0])
-
-    point1 = firstbar_avr + (200 / np.linalg.norm(direction_vector)) * direction_vector
-    point2 = firstbar_avr - (200 / np.linalg.norm(direction_vector)) * direction_vector 
-    point3 = secondbar_avr + (200 / np.linalg.norm(direction_vector)) * direction_vector 
-    point4 = secondbar_avr - (200 / np.linalg.norm(direction_vector)) * direction_vector 
+    return upper_left, bottom_left, upper_right, bottom_right
     
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection = '3d')
-    x = np.arange(0, depth_width)
-    y = np.arange(0, depth_height)
-    x, y = np.meshgrid(x, y)
-
-    ax.scatter(x1, y1, z1, c='red', marker='o')
-    ax.scatter(x2, y2, z2, c ='red', marker='o')
-    ax.scatter(point1[0], point1[1], point1[2] + 100, c='g', marker='x', label = "Point 1")
-    ax.scatter(point2[0], point2[1], point2[2] + 100, c='g', marker='x', label = "Point 2")
-    ax.scatter(point3[0], point3[1], point3[2] + 100, c='g', marker='x', label = "Point 3")
-    ax.scatter(point4[0], point4[1], point4[2] + 100, c='g', marker='x', label = "Point 4")
-
-    ax.plot([x1, x2], [y1, y2], [z1, z2], c='r', label = 'Line')
-    ax.plot_surface(x, y, bars)
-
-    plt.show()
 
 # Lấy góc lệch giữa 2 thanh ngang
 def angular_deviation(firstbar_avr, secondbar_avr):
@@ -195,47 +186,73 @@ def angular_deviation(firstbar_avr, secondbar_avr):
     # beta: Góc lệch giữa 2 điểm trung bình và mặt phảng xOz
 
 
-
+# Lọc ra phần có diện tích với nhất, sau khi dùng Otsu
 def get_largest_area(depth_data):
-    depth_data = get_8bit_image(depth_data)
-    depth_data = cv2.GaussianBlur(depth_data, (7,7), 0)
-    _, thresholded_image = cv2.threshold(depth_data, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    img = get_8bit_image(depth_data)
+    img = cv2.GaussianBlur(img, (7,7), 0)
+    _, thresholded_image = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     contours, _ = cv2.findContours(thresholded_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     mask = np.zeros_like(thresholded_image)
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
         cv2.drawContours(mask, [largest_contour], -1, 255, thickness=cv2.FILLED)
     result_image = cv2.bitwise_and(thresholded_image, thresholded_image, mask=mask)
-    return result_image
+    mask1 = (result_image == 0)
+    depth_data[mask1] = 0
+    return depth_data
+    # return result_image
 
-def get_backbone(depth_data):
+
+# Lấy ra phần xương sống
+def get_backbone_line(depth_data):
     for col_index in range(depth_data.shape[1]):
         column = depth_data[:, col_index]
         nonzero_elements = column[column > 0]  
         if len(nonzero_elements) > 0:
             min_nonzero_element = np.min(nonzero_elements)  
             depth_data[column != min_nonzero_element, col_index] = 0
-    return depth_data
-    # return mảng 2 chiều
-
-def get_backbone_line(depth_data):
     backbone_line = np.zeros(depth_data.shape[1])
     for col_index in range(depth_data.shape[1]):
         column = depth_data[:, col_index]
         non_zero_elements = column[column != 0]
         if non_zero_elements.size > 0:
             backbone_line[col_index] = np.mean(non_zero_elements)
-    backbone_line = backbone_line[backbone_line != 0]
+    # backbone_line = backbone_line[backbone_line != 0]
     max_val = np.max(backbone_line)
     backbone_line = max_val - backbone_line
     return backbone_line
-    # return mảng 1 chiều
-
-def get_tail(backbone_line):
-    length = len(backbone_line)
+    
+# Hiển thị phần xương sống, bụng, đuôi 
+def backbone_visualize(backbone_line):
+    # length = len(backbone_line)
     min_val = np.min(backbone_line[backbone_line != 0])
     min_index = np.argmin(backbone_line)
-    if min_index < length - 50:
-        return min_val, min_index
-        # return vị trí cột và độ cao của cuống đuôi
+    belly_index = min_index - 200
+    belly_val = backbone_line[belly_index]
+    plt.scatter(min_index, min_val, c='red', marker='x', label = 'Cuống đuôi')
+    plt.scatter(belly_index, belly_val, c='green', marker='x', label = 'Vị trí bụng')
+    plt.plot(backbone_line)
+    plt.xlabel('Cột')
+    plt.ylabel('Độ cao')
+    plt.title('Xương sống')
+    plt.legend()
+    plt.show()
+
+
+
+# Vẽ ảnh xám chứa 4 góc và 2 điểm trung bình của thanh
+def draw_corner_and_bar_avr(depth_data, upper_left, bottom_left, upper_right, bottom_right, leftbar_avr, rightbar_avr):
+    img = get_8bit_image(depth_data)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    
+    cv2.circle(img, (upper_left[0], upper_left[1]), 5, (0,255,0), -1)
+    cv2.circle(img, (bottom_left[0], bottom_left[1]), 5, (0,255,0), -1)
+    cv2.circle(img, (upper_right[0], upper_right[1]), 5, (0,255,0), -1)
+    cv2.circle(img, (bottom_right[0], bottom_right[1]), 5, (0,255,0), -1)
+
+    cv2.circle(img, (leftbar_avr[0], leftbar_avr[1]), 5, (0,0,255), -1)
+    cv2.circle(img, (rightbar_avr[0], rightbar_avr[1]), 5, (0,0,255), -1)
+ 
+    cv2.imshow('window', img)
+    cv2.waitKey(0)
 

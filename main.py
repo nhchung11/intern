@@ -1,85 +1,53 @@
 import my_lib
 import numpy as np
 import cv2
-import matplotlib.pyplot as plt
-# Lấy ma trận từ file bin và tham số
-bin_path = r'D:\python\wavelet_intern\data\bin1.bin'
-param_path = r'D:\python\wavelet_intern\data\param1.txt'
+bin_path = r'C:\Users\USER\Documents\Chung_intern\data\bin7.bin'
+param_path = r'C:\Users\USER\Documents\Chung_intern\data\param3.txt'
 
 name, depth_scale, depth_width, depth_height, depth_cx, depth_cy, depth_fx, depth_fy = my_lib.get_parameter(param_path)
 depth_data = my_lib.convert(bin_path, depth_width, depth_height)
+original = depth_data.copy()
 
+# Lấy giá trị 4 góc và giá trị trung bình của 2 thanh
+leftbar, leftbar_avr, upper_left, bottom_left = my_lib.get_first_bar(depth_data, depth_height, depth_width)
+rightbar_avr, upper_right, bottom_right = my_lib.get_second_bar(depth_data, depth_height, depth_width, leftbar_avr, leftbar)
 
-# Lấy thanh ngang thứ nhất và thứ hai
-firstbar, firstbar_avr,_, _ = my_lib.get_first_bar(depth_data, depth_height, depth_width)
-secondbar, secondbar_avr = my_lib.get_second_bar(depth_data)
-bars = firstbar + secondbar
+# Điều chỉnh 4 góc 
+upper_left, bottom_left, upper_right, bottom_right = my_lib.get_4_corner_of_body(upper_left, bottom_left, upper_right, bottom_right, depth_height, depth_width)
 
-# my_lib.plt_bars_visualize(bars, depth_width, depth_height, firstbar_avr, secondbar_avr)
+if upper_left[1] < depth_height / 2:
+    original[:upper_left[1], :] = 0
+else:
+    original[upper_left[1]:, :] = 0
 
-tan_alpha, tan_beta = my_lib.angular_deviation(firstbar_avr, secondbar_avr)
-
-# Chuẩn hóa ảnh cho 2 thanh ngang bằng nhau
-# Lấy thanh cao hơn làm gốc
-# print(depth_data.dtype)
+# Nâng ảnh cho 2 thanh bằng nhau
+tan_alpha, tan_beta = my_lib.angular_deviation(leftbar_avr, rightbar_avr)
 for i in range(depth_width):
-    a = abs(secondbar_avr[0] - i)
+    a = abs(rightbar_avr[0] - i)
     d = np.int32(a * tan_alpha)
-    if i < secondbar_avr[0]:
+    if i < rightbar_avr[0]:
         # Nếu phần ảnh nằm bên trái thì đẩy ảnh cao lên
-        depth_data[:, i] += d
+        original[:, i] += d
     else:
         # Nếu phần ảnh nằm bên phải thì hạ xuống
-        depth_data[:, i] -= d
-for i in range(depth_height):
-    for j in range(depth_width):
-        if depth_data[i, j] < 250:
-            depth_data[i, j] = 0
-# my_lib.o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
-# my_lib.plt_visualize(depth_data, depth_width, depth_height)
-# my_lib.plt_bars_visualize(bars, depth_width, depth_height, firstbar_avr, secondbar_avr)
+        original[:, i] -= d
+    # Cắt phần thanh ở trên
+    for j in range(depth_height):
+        if original[j, i] < leftbar_avr[2] + 0.3 * i or original[j, i] < 630:
+            original[j, i] = 0
+        
+
+# Cắt ảnh theo 4 góc
+matrix = np.zeros((depth_height, depth_width), dtype=int)
+pts = np.array([[upper_left[0], upper_left[1]], [bottom_left[0], bottom_left[1]], [bottom_right[0], bottom_right[1]], [upper_right[0], upper_right[1]]], dtype=np.int32)
+cv2.fillPoly(matrix, [pts], 1)
+original = original * matrix
 
 # Xóa phần thừa
-for i in range(depth_height):
-    for j in range(depth_width):
-        if depth_data[i, j] != 0 and bars[i, j] != 0:
-            depth_data[i, j] = 0
-        if depth_data[i, j] < 800:
-            depth_data[i, j] = 0
+original = my_lib.get_largest_area(original)
+# backbone_line = my_lib.get_backbone_line(original)
 
-# Vector vuông góc với đường thẳng nối 2 điểm trung bình của 2 thanh
-direction_vector = np.array([secondbar_avr[1] - firstbar_avr[1], firstbar_avr[0] - secondbar_avr[0], 0])
-
-# Tọa độ 4 điểm chứa phần thân lợn
-point1 = (firstbar_avr + (200 / np.linalg.norm(direction_vector)) * direction_vector).astype(np.int32)
-point2 = (firstbar_avr - (200 / np.linalg.norm(direction_vector)) * direction_vector).astype(np.int32)
-point3 = (secondbar_avr + (200 / np.linalg.norm(direction_vector)) * direction_vector).astype(np.int32) 
-point4 = (secondbar_avr - (200 / np.linalg.norm(direction_vector)) * direction_vector).astype(np.int32) 
-    
-
-# my_lib.plt_bars_visualize(bars, depth_width, depth_height, firstbar_avr, secondbar_avr)
-# my_lib.o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
-# print(point1, point2, point3, point4)
-matrix = np.zeros((depth_height, depth_width), dtype=int)
-pts = np.array([[point1[0], point1[1]], [point2[0], point2[1]], [point4[0], point4[1]], [point3[0], point3[1]]], dtype=np.int32)
-cv2.fillPoly(matrix, [pts], 1)
-depth_data = depth_data * matrix
-
-body = my_lib.get_largest_area(depth_data)
-for i in range (depth_height):
-    for j in range(depth_width):
-        if body[i, j] == 0:
-            depth_data[i, j] = 0
-# cv2.imshow('window', gray)
-# cv2.waitKey(0)
-depth_data = my_lib.get_backbone(depth_data)
-backbone_line = my_lib.get_backbone_line(depth_data)
-tail_val, tail_index = my_lib.get_tail(backbone_line)
-
-plt.scatter(tail_index, tail_val, c='r', marker='o')
-plt.plot(backbone_line)
-plt.xlabel('Cột')
-plt.ylabel('Độ cao')
-plt.title('Xương sống')
-plt.show()
-# my_lib.o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
+my_lib.o3d_visualize(original, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy)
+# my_lib.backbone_visualize(backbone_line)
+# my_lib.draw_corner_and_bar_avr(original, upper_left, bottom_left, upper_right, bottom_right, leftbar_avr, rightbar_avr)
+# print(original.dtype)
