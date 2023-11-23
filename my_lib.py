@@ -158,11 +158,11 @@ def get_4_corner_of_body(upper_left, bottom_left, upper_right, bottom_right, dep
     else:
         upper_right[1] = upper_left[1]
 
-    if upper_right[0] - upper_left[0] < depth_height / 2:
+    if upper_right[0] - upper_left[0] < depth_width / 2:
         upper_left = upper_right
         bottom_left = bottom_right
-        upper_right = np.array([depth_width - 5, upper_right[1]])
-        bottom_right = np.array([depth_width - 5, bottom_right[1]])
+        upper_right = np.array([depth_width - 5, upper_right[1] + 10])
+        bottom_right = np.array([depth_width - 5, bottom_right[1] - 10])
 
 
     return upper_left, bottom_left, upper_right, bottom_right
@@ -220,17 +220,22 @@ def get_backbone_line(depth_data):
     # backbone_line = backbone_line[backbone_line != 0]
     max_val = np.max(backbone_line)
     backbone_line = max_val - backbone_line
-    return backbone_line
-    
-# Hiển thị phần xương sống, bụng, đuôi 
-def backbone_visualize(backbone_line):
-    # length = len(backbone_line)
     min_val = np.min(backbone_line[backbone_line != 0])
     min_index = np.argmin(backbone_line)
-    belly_index = min_index - 200
-    belly_val = backbone_line[belly_index]
-    plt.scatter(min_index, min_val, c='red', marker='x', label = 'Cuống đuôi')
-    plt.scatter(belly_index, belly_val, c='green', marker='x', label = 'Vị trí bụng')
+    belly_index1 = min_index - 200
+    belly_val1 = backbone_line[belly_index1]
+    belly_index2 = min_index - 150
+    belly_val2 = backbone_line[belly_index2]
+    belly1 = [belly_index1, belly_val1]
+    belly2 = [belly_index2, belly_val2]
+    tail = [min_index, min_val]
+    return backbone_line, belly1, belly2, tail
+    
+# Hiển thị phần xương sống, bụng, đuôi 
+def backbone_visualize(backbone_line, belly1, belly2, tail):
+    plt.scatter(tail[0], tail[1], c='red', marker='x', label = 'Cuống đuôi')
+    plt.scatter(belly1[0], belly1[1], c='green', marker='x', label = 'Vị trí bụng 1')
+    plt.scatter(belly2[0], belly2[1], c='green', marker='x', label = 'Vị trí bụng 2')
     plt.plot(backbone_line)
     plt.xlabel('Cột')
     plt.ylabel('Độ cao')
@@ -256,3 +261,7 @@ def draw_corner_and_bar_avr(depth_data, upper_left, bottom_left, upper_right, bo
     cv2.imshow('window', img)
     cv2.waitKey(0)
 
+
+def is_on_sphere(x, y, z, center, radius):
+    distance_squared = (x - center[0])**2 + (y - center[1])**2 + (z - center[2])**2
+    return abs(distance_squared - radius**2) <= 20
