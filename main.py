@@ -78,7 +78,7 @@ point1, point2 = my_lib.get_point_and_nearby(tail3d, line3d, depth_width, depth_
 
 
 p1, p2, p3 = my_lib.get3points(original, line3d, point1, point2, depth_width, depth_height)
-d1, d2, arcos_degree = my_lib.get_result(original, depth_width, depth_height, p1, p2, p3)
+d1, d2, arcos_degree = my_lib.get_result(p1, p2, p3)
 points.append(tail3d)
 points.append(p1)
 points.append(p2)

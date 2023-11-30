@@ -343,39 +343,9 @@ def get3points(original, line3d, point1, point2, depth_width, depth_height):
                     p3[2] = original[i, j]
     return p1, p2, p3
 
-def get_result(original, depth_width, depth_height, p1, p2, p3):
-    d1 = sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
-    if d1 > 132:
-        check = False
-        for i in range(depth_height):
-            for j in range(depth_width):
-                d3 = sqrt((j - p1[0])**2 + (i-p1[1])**2 + (original[i, j] - p1[2])**2)
-                if abs(d3 - 132) < 1:
-                    d1 = d3
-                    p2[0] = j
-                    p2[1] = i
-                    p2[2] = original[i, j]
-                    check = True
-                    break
-            if check == True:
-                break    
-
-
+def get_result(p1, p2, p3):
+    d1 = sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)  
     d2 = sqrt((p1[0] - p3[0])**2 + (p1[1] - p3[1])**2 + (p1[2] - p3[2])**2)
-    if d2 > 132:
-        check = False
-        for i in range(depth_height):
-            for j in range(depth_width):
-                d3 = sqrt((j - p1[0])**2 + (depth_height - i - 1 -p1[1])**2 + (original[depth_height - 1 - i, j] - p1[2])**2)
-                if abs(d3 - 132) < 1:
-                    d2 = d3
-                    p3[0] = j
-                    p3[1] = depth_height - i - 1
-                    p3[2] = original[depth_height - i - 1, j]
-                    check = True
-                    break
-            if check == True:
-                break
     vectorp1p2 = p1 - p2
     vectorp1p3 = p1 - p3
 
