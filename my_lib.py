@@ -284,11 +284,10 @@ def draw_corner_and_bar_avr(depth_data, upper_left, bottom_left, upper_right, bo
 
 
 # Chọn điểm cách 50cm ở bụng và 1 điểm lân cận
-def get_point_and_nearby(tail3d, line3d, depth_width, depth_height):  
+def get_point_and_nearby(tail3d, line3d, depth_height):  
     point1 = np.array([0, 0, 0])
     point2 = np.array([0, 0, 0])
-
-
+    # Lấy từ điểm đuôi 50cm dóng lên trên để tìm điểm nằm trên lưng
     point2[0] = tail3d[0] - 160
     point1[0] = tail3d[0] - 150
     for i in range(depth_height):
@@ -304,7 +303,8 @@ def get_point_and_nearby(tail3d, line3d, depth_width, depth_height):
             break
     return point1, point2
 
-def get3points(original, line3d, point1, point2, depth_width, depth_height):
+# Lấy 3 điểm: 1 điểm trên lưng và 2 điểm trên bụng để tính góc và Rho
+def get3points(original, point1, point2, depth_width, depth_height):
     vector = point1 - point2
     x1 = np.arange(0, depth_width)
     y1 = np.arange(0, depth_height)
@@ -320,6 +320,7 @@ def get3points(original, line3d, point1, point2, depth_width, depth_height):
     p3 = np.array([0, 0, 0])
     original = get_largest_area(original)
     min_distance = 200
+    # Duyệt để tìm khoảng cách min trong các điểm cắt được
     for i in range(p1[1]):
         for j in range(depth_width):
             if original[i, j] != 0:
@@ -331,6 +332,7 @@ def get3points(original, line3d, point1, point2, depth_width, depth_height):
                     p2[1] = i
                     p2[2] = original[i, j]
     min_distance = 200
+    # Duyệt để tìm khoảng cách min trong các điểm cắt được
     for i in range(p1[1], depth_height):
         for j in range(depth_width):
             if original[i, j] != 0:
@@ -342,7 +344,12 @@ def get3points(original, line3d, point1, point2, depth_width, depth_height):
                     p3[1] = i
                     p3[2] = original[i, j]
     return p1, p2, p3
+    # p1: Điểm trên lưng ~ point1
+    # p2: Điểm bên phải
+    # p3: Điểm bên trái
 
+
+# Tính khoảng cách Rho từ điểm bên phải và trái đến điểm trên lưng và góc hợp bởi 2 đường thẳng này
 def get_result(p1, p2, p3):
     d1 = sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)  
     d2 = sqrt((p1[0] - p3[0])**2 + (p1[1] - p3[1])**2 + (p1[2] - p3[2])**2)
@@ -357,5 +364,5 @@ def get_result(p1, p2, p3):
     # print(f"Góc lệch 2 vector: {arcos} radian ~ {arcos_degree} degree")
 
     # result = (29/80) * arcos - 31.625*arcos
-    # print(f"Back-angle calculation: {tmp}")
+    # print(f"Back-angle calculation: {result}")
     return d1, d2, arcos_degree
