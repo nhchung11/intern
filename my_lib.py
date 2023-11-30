@@ -4,6 +4,7 @@ import struct
 import matplotlib.pyplot as plt
 import open3d as o3d
 import cv2
+from math import sqrt
 
 # Đọc file bin 
 def convert(bin_file_path, depth_width, depth_height):
@@ -46,13 +47,16 @@ def get_parameter(param_path):
         print("No param text founded")
 
 # Hiển thị bằng matplotlib.pyplot
-def plt_visualize(depth_data, depth_width, depth_height):
+def plt_visualize(depth_data, depth_width, depth_height, points):
     x = np.arange(0, depth_width)
     y = np.arange(0, depth_height)
     x, y = np.meshgrid(x, y)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection = '3d')
     ax.plot_surface(x, y, depth_data)
+    if len(points) > 0:
+        for i in points:
+            ax.scatter(i[0], i[1], i[2], c='r', marker='x')
     plt.show()
 
 # Hiển thị bằng Open3D
@@ -181,9 +185,22 @@ def angular_deviation(firstbar_avr, secondbar_avr):
     a = np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
     tan_alpha = abs(z1 - z2) / a
     tan_beta = abs(y2 - y1) / abs(x2 - x1)
+    
     return tan_alpha, tan_beta      
     # alpha: Góc lệch giữa 2 điểm trung bình và mặt phẳng xOy
     # beta: Góc lệch giữa 2 điểm trung bình và mặt phảng xOz
+
+
+# Cắt ảnh theo 4 góc 
+def cut(original, upper_left, bottom_left, upper_right, bottom_right, depth_width, depth_height):
+    matrix = np.zeros((depth_height, depth_width), dtype=int)
+    pts = np.array([[upper_left[0], upper_left[1]], [bottom_left[0], bottom_left[1]], [bottom_right[0], bottom_right[1]], [upper_right[0], upper_right[1]]], dtype=np.int32)
+    cv2.fillPoly(matrix, [pts], 1)
+    original = original * matrix
+    # Xóa phần thừa
+    original = get_largest_area(original)
+    return original
+
 
 
 # Lọc ra phần có diện tích với nhất, sau khi dùng Otsu
@@ -203,8 +220,10 @@ def get_largest_area(depth_data):
     # return result_image
 
 
+
 # Lấy ra phần xương sống
-def get_backbone_line(depth_data):
+def get_backbone_line(body):
+    depth_data = body.copy()
     for col_index in range(depth_data.shape[1]):
         column = depth_data[:, col_index]
         nonzero_elements = column[column > 0]  
@@ -230,8 +249,10 @@ def get_backbone_line(depth_data):
     belly2 = [belly_index2, belly_val2]
     tail = [min_index, min_val]
     return backbone_line, belly1, belly2, tail
-    
-# Hiển thị phần xương sống, bụng, đuôi 
+
+
+
+# Hiển thị phần xương sống, bụng, đuôi dưới dạng 2D
 def backbone_visualize(backbone_line, belly1, belly2, tail):
     plt.scatter(tail[0], tail[1], c='red', marker='x', label = 'Cuống đuôi')
     plt.scatter(belly1[0], belly1[1], c='green', marker='x', label = 'Vị trí bụng 1')
@@ -245,7 +266,7 @@ def backbone_visualize(backbone_line, belly1, belly2, tail):
 
 
 
-# Vẽ ảnh xám chứa 4 góc và 2 điểm trung bình của thanh
+# Hiển thị ảnh xám chứa 4 góc và 2 điểm trung bình của thanh
 def draw_corner_and_bar_avr(depth_data, upper_left, bottom_left, upper_right, bottom_right, leftbar_avr, rightbar_avr):
     img = get_8bit_image(depth_data)
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -262,6 +283,109 @@ def draw_corner_and_bar_avr(depth_data, upper_left, bottom_left, upper_right, bo
     cv2.waitKey(0)
 
 
-def is_on_sphere(x, y, z, center, radius):
-    distance_squared = (x - center[0])**2 + (y - center[1])**2 + (z - center[2])**2
-    return abs(distance_squared - radius**2) <= 20
+# Chọn điểm cách 50cm ở bụng và 1 điểm lân cận
+def get_point_and_nearby(tail3d, line3d, depth_width, depth_height):  
+    point1 = np.array([0, 0, 0])
+    point2 = np.array([0, 0, 0])
+
+
+    point2[0] = tail3d[0] - 160
+    point1[0] = tail3d[0] - 150
+    for i in range(depth_height):
+        if line3d[i, point1[0]] != 0:
+            point1[1] = i
+            point1[2] = line3d[i, point1[0]]
+            break
+    
+    for i in range(depth_height):
+        if line3d[i, point2[0]] != 0:
+            point2[1] = i
+            point2[2] = line3d[i, point2[0]]
+            break
+    return point1, point2
+
+def get3points(original, line3d, point1, point2, depth_width, depth_height):
+    vector = point1 - point2
+    x1 = np.arange(0, depth_width)
+    y1 = np.arange(0, depth_height)
+    x1, y1 = np.meshgrid(x1, y1)
+
+    for i in range(depth_height):
+        for j in range(depth_width):
+            if original[i, j] != 0:
+                if vector[0] * (j - point1[0]) + vector[1] * (i - point1[1]) + vector[2] * (original[i, j] - point1[2]) > 0 or vector[0] * (j - point2[0]) + vector[1] * (i - point2[1]) + vector[2] * (original[i, j] - point2[2]) < 0:
+                    original[i, j] = 0
+    p1 = point1
+    p2 = np.array([0, 0, 0])
+    p3 = np.array([0, 0, 0])
+    original = get_largest_area(original)
+    min_distance = 200
+    for i in range(p1[1]):
+        for j in range(depth_width):
+            if original[i, j] != 0:
+                d = sqrt((j - p1[0])**2 + (i - p1[1])**2 + (original[i,j] - p1[2])**2)
+                d = abs(d - 132)
+                if d < min_distance:
+                    min_distance = d
+                    p2[0] = j
+                    p2[1] = i
+                    p2[2] = original[i, j]
+    min_distance = 200
+    for i in range(p1[1], depth_height):
+        for j in range(depth_width):
+            if original[i, j] != 0:
+                d = sqrt((j - p1[0])**2 + (i - p1[1])**2 + (original[i,j] - p1[2])**2)
+                d = abs(d - 132)
+                if d < min_distance:
+                    min_distance = d
+                    p3[0] = j
+                    p3[1] = i
+                    p3[2] = original[i, j]
+    return p1, p2, p3
+
+def get_result(original, depth_width, depth_height, p1, p2, p3):
+    d1 = sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
+    if d1 > 132:
+        check = False
+        for i in range(depth_height):
+            for j in range(depth_width):
+                d3 = sqrt((j - p1[0])**2 + (i-p1[1])**2 + (original[i, j] - p1[2])**2)
+                if abs(d3 - 132) < 1:
+                    d1 = d3
+                    p2[0] = j
+                    p2[1] = i
+                    p2[2] = original[i, j]
+                    check = True
+                    break
+            if check == True:
+                break    
+
+
+    d2 = sqrt((p1[0] - p3[0])**2 + (p1[1] - p3[1])**2 + (p1[2] - p3[2])**2)
+    if d2 > 132:
+        check = False
+        for i in range(depth_height):
+            for j in range(depth_width):
+                d3 = sqrt((j - p1[0])**2 + (depth_height - i - 1 -p1[1])**2 + (original[depth_height - 1 - i, j] - p1[2])**2)
+                if abs(d3 - 132) < 1:
+                    d2 = d3
+                    p3[0] = j
+                    p3[1] = depth_height - i - 1
+                    p3[2] = original[depth_height - i - 1, j]
+                    check = True
+                    break
+            if check == True:
+                break
+    vectorp1p2 = p1 - p2
+    vectorp1p3 = p1 - p3
+
+    T = vectorp1p2[0]*vectorp1p3[0] + vectorp1p2[1]*vectorp1p3[1] + vectorp1p2[2]*vectorp1p3[2]
+    M = sqrt(vectorp1p2[0]**2 + vectorp1p2[1]**2 + vectorp1p2[2]**2) * sqrt(vectorp1p3[0]**2 + vectorp1p3[1]**2 + vectorp1p3[2]**2)
+    cos = T/M
+    arcos = np.arccos(cos)
+    arcos_degree = np.degrees(arcos)
+    # print(f"Góc lệch 2 vector: {arcos} radian ~ {arcos_degree} degree")
+
+    # result = (29/80) * arcos - 31.625*arcos
+    # print(f"Back-angle calculation: {tmp}")
+    return d1, d2, arcos_degree
