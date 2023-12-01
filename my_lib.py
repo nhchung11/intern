@@ -59,6 +59,16 @@ def plt_visualize(depth_data, points):
     if len(points) > 0:
         for i in points:
             ax.scatter(i[0], i[1], i[2], c='r', marker='x')
+    theta = np.linspace(-np.pi/2, np.pi/2, 100)
+    z1 = np.linspace(0, 1000, 100)
+    theta, z1 = np.meshgrid(theta, z1)
+    radius = 170
+    # Chuyển từ tọa độ cilindrical sang Cartesian
+    x1 = points[-1][0] + radius * np.cos(theta)
+    y1 = points[-1][1] + radius * np.sin(theta)
+
+    # Tạo hình 3D
+    ax.plot_surface(x1, y1, z1, color='b', alpha=0.6)
     plt.show()
 
 # Hiển thị bằng Open3D
@@ -381,13 +391,32 @@ def get_result(p1, p2, p3):
     # print(f"Back-angle calculation: {result}")
     return d1, d2, arcos_degree
 
-def get_tail3d(original, line3d):
-    point = np.array([0, 0, 0])
-    depth_height = original[0:]
-    depth_width = original[0] 
+def get_tail3d(body, line3d):
+    center_point = np.array([0, 0, 0])
+    depth_height = len(line3d[0:])
+    depth_width = len(line3d[0])
+    count = 0 
     for i in range(depth_width):
         for j in range(depth_height):
-            if original[j, depth_width - i] == line3d:
-                if original[j - 50, depth_width - i] != 0 and original[j - 50, depth_width - i ] != 0:
-                    point = original[j, depth_width - i]
-    return point
+            if line3d[j, depth_width - 1 - i] != 0:
+                center_point[0] = depth_width - 1 - i
+                center_point[1] = j
+                center_point[2] = line3d[j, depth_width - 1 - i]
+                count += 1
+        if count == 180:
+            break
+    radius = 160
+    arr = []
+    point = np.array([0, 0, 0])
+    for i in range(depth_height):
+        for j in range(center_point[0] - 50, depth_width):
+            if (body[i, j] != 0):
+                d = sqrt((j - center_point[0])** 2 + (i - center_point[1])**2)
+                d = abs(d - radius)
+                if d < 1:
+                    point[0] = j
+                    point[1] = i
+                    point[2] = body[i, j]
+                    arr.append(point)
+                    break
+    return center_point, len(arr), arr
