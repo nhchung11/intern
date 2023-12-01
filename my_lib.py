@@ -47,7 +47,9 @@ def get_parameter(param_path):
         print("No param text founded")
 
 # Hiển thị bằng matplotlib.pyplot
-def plt_visualize(depth_data, depth_width, depth_height, points):
+def plt_visualize(depth_data, points):
+    depth_height = len(depth_data[0:])
+    depth_width = len(depth_data[0]) 
     x = np.arange(0, depth_width)
     y = np.arange(0, depth_height)
     x, y = np.meshgrid(x, y)
@@ -60,7 +62,9 @@ def plt_visualize(depth_data, depth_width, depth_height, points):
     plt.show()
 
 # Hiển thị bằng Open3D
-def o3d_visualize(depth_data, depth_width, depth_height, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy): 
+def o3d_visualize(depth_data, depth_scale, depth_cx, depth_cy, depth_fx, depth_fy): 
+    depth_height = len(depth_data[0:])
+    depth_width = len(depth_data[0]) 
     depth = depth_data / depth_scale
     y, x = np.mgrid[0:depth_height, 0:depth_width]
     x3d = (x - depth_cx) * depth / depth_fx
@@ -92,7 +96,9 @@ def get_8bit_image(depth_data):
     return gray_image
 
 # Lấy thanh ngang đầu tiên
-def get_first_bar(depth_data, depth_height, depth_width):
+def get_first_bar(depth_data):
+    depth_height = len(depth_data[0:])
+    depth_width = len(depth_data[0]) 
     upper_left = np.array([0, 0, 0])
     bottom_left = np.array([0, 0, 0])
     first_bar = np.zeros_like(depth_data)
@@ -121,7 +127,9 @@ def get_first_bar(depth_data, depth_height, depth_width):
     return first_bar, left_avr, upper_left, bottom_left
 
 # Lấy thanh ngang thứ hai
-def get_second_bar(depth_data, depth_height, depth_width, leftbar_avr, leftbar):
+def get_second_bar(depth_data, leftbar_avr, leftbar):
+    depth_height = len(depth_data[0:])
+    depth_width = len(depth_data[0]) 
     for i in range(depth_height):
         for j in range(depth_width):
             if depth_data[i, j] > leftbar_avr[2] + 0.3 * j:
@@ -156,7 +164,9 @@ def get_second_bar(depth_data, depth_height, depth_width, leftbar_avr, leftbar):
 
 
 # Chỉnh 4 góc cho khớp với thân
-def get_4_corner_of_body(upper_left, bottom_left, upper_right, bottom_right, depth_height, depth_width):    
+def get_4_corner_of_body(original, upper_left, bottom_left, upper_right, bottom_right):    
+    depth_height = len(original[0:])
+    depth_width = len(original[0]) 
     if upper_left[1] < upper_right[1]:
         upper_left[1] = upper_right[1]
     else:
@@ -192,7 +202,9 @@ def angular_deviation(firstbar_avr, secondbar_avr):
 
 
 # Cắt ảnh theo 4 góc 
-def cut(original, upper_left, bottom_left, upper_right, bottom_right, depth_width, depth_height):
+def cut(original, upper_left, bottom_left, upper_right, bottom_right):
+    depth_height = len(original[0:])
+    depth_width = len(original[0]) 
     matrix = np.zeros((depth_height, depth_width), dtype=int)
     pts = np.array([[upper_left[0], upper_left[1]], [bottom_left[0], bottom_left[1]], [bottom_right[0], bottom_right[1]], [upper_right[0], upper_right[1]]], dtype=np.int32)
     cv2.fillPoly(matrix, [pts], 1)
@@ -304,7 +316,9 @@ def get_point_and_nearby(tail3d, line3d, depth_height):
     return point1, point2
 
 # Lấy 3 điểm: 1 điểm trên lưng và 2 điểm trên bụng để tính góc và Rho
-def get3points(original, point1, point2, depth_width, depth_height):
+def get3points(original, point1, point2):
+    depth_height = len(original[0:])
+    depth_width = len(original[0]) 
     vector = point1 - point2
     x1 = np.arange(0, depth_width)
     y1 = np.arange(0, depth_height)
@@ -366,3 +380,14 @@ def get_result(p1, p2, p3):
     # result = (29/80) * arcos - 31.625*arcos
     # print(f"Back-angle calculation: {result}")
     return d1, d2, arcos_degree
+
+def get_tail3d(original, line3d):
+    point = np.array([0, 0, 0])
+    depth_height = original[0:]
+    depth_width = original[0] 
+    for i in range(depth_width):
+        for j in range(depth_height):
+            if original[j, depth_width - i] == line3d:
+                if original[j - 50, depth_width - i] != 0 and original[j - 50, depth_width - i ] != 0:
+                    point = original[j, depth_width - i]
+    return point
