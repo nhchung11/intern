@@ -76,17 +76,39 @@ tail3d[1] = tmp
 
 point1, point2 = my_lib.get_point_and_nearby(tail3d, line3d, depth_height)
 
-
+center_point = my_lib.get_tail3d(body, line3d)
+radius = 180
+d = 0
+cp = np.zeros_like(body)
+point = np.array([0, 0, 0])
+arr1 = []
+for i in range(depth_height):
+    for j in range(center_point[0], depth_width):
+        if body[i, j] != 0:
+            d = sqrt((j - center_point[0])**2 + (i - center_point[1])**2)
+            d = abs(d - radius)
+            if d < 10:
+                cp[i, j] = body[i, j]
+for i in range(depth_height):
+    for j in range(depth_width):
+        if cp[i, j] != 0:
+           value = cp[i, j]
+           arr1.append((j,i,value))
+d = sqrt((arr1[0][0] - arr1[-1][0])**2 + (arr1[0][1] - arr1[-1][1])**2 + (arr1[0][2] - arr1[-1][2])**2)
+tail3d[0] = (arr1[0][0] + arr1[-1][0])/2
+tail3d[1] = (arr1[0][1] + arr1[-1][1])/2
+tail3d[2] = (arr1[0][2] + arr1[-1][2])/2
 p1, p2, p3 = my_lib.get3points(original, point1, point2)
 d1, d2, arcos_degree = my_lib.get_result(p1, p2, p3)
-# points.append(tail3d)
+
 points.append(p1)
 points.append(p2)
 points.append(p3)
-point = my_lib.get_tail3d(original, line3d)
-points.append(point)
+points.append(arr1[0])
+points.append(arr1[-1])
+points.append(center_point)
 print(f"Rho1: {d1}")
 print(f"Rho2: {d2}")
 print(f"Góc lệch: {arcos_degree}")
 
-# my_lib.plt_visualize(original, points) 
+my_lib.plt_visualize(cp, points) 
