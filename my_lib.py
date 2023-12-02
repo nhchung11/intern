@@ -62,7 +62,7 @@ def plt_visualize(depth_data, points):
     theta = np.linspace(-np.pi/2, np.pi/2, 100)
     z1 = np.linspace(0, 1000, 100)
     theta, z1 = np.meshgrid(theta, z1)
-    radius = 170
+    radius = 200
     # Chuyển từ tọa độ cilindrical sang Cartesian
     x1 = points[-1][0] + radius * np.cos(theta)
     y1 = points[-1][1] + radius * np.sin(theta)
@@ -405,18 +405,5 @@ def get_tail3d(body, line3d):
                 count += 1
         if count == 180:
             break
-    radius = 160
-    arr = []
-    point = np.array([0, 0, 0])
-    for i in range(depth_height):
-        for j in range(center_point[0] - 50, depth_width):
-            if (body[i, j] != 0):
-                d = sqrt((j - center_point[0])** 2 + (i - center_point[1])**2)
-                d = abs(d - radius)
-                if d < 1:
-                    point[0] = j
-                    point[1] = i
-                    point[2] = body[i, j]
-                    arr.append(point)
-                    break
-    return center_point, len(arr), arr
+    return center_point
+
